@@ -16,6 +16,7 @@ import {
   buildPluginLoaderAliasMap,
   buildPluginLoaderJitiOptions,
   shouldPreferNativeJiti,
+  toSafeImportPath,
 } from "./sdk-alias.js";
 import type { PluginConfigUiHint } from "./types.js";
 
@@ -114,7 +115,7 @@ function resolveChannelConfigSchemaModulePath(pluginDir: string): string | undef
 
 function loadChannelConfigSurfaceModuleSync(modulePath: string): ChannelConfigSurface | null {
   try {
-    const imported = getJiti(modulePath)(modulePath) as Record<string, unknown>;
+    const imported = getJiti(modulePath)(toSafeImportPath(modulePath)) as Record<string, unknown>;
     return resolveConfigSchemaExport(imported);
   } catch {
     return null;

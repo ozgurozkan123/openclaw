@@ -10,6 +10,7 @@ import {
   buildPluginLoaderJitiOptions,
   resolveLoaderPackageRoot,
   shouldPreferNativeJiti,
+  toSafeImportPath,
 } from "../plugins/sdk-alias.js";
 
 const CURRENT_MODULE_PATH = fileURLToPath(import.meta.url);
@@ -262,7 +263,7 @@ export function loadFacadeModuleAtLocationSync<T extends object>(params: {
   try {
     loaded =
       params.loadModule?.(params.location.modulePath) ??
-      (getJiti(params.location.modulePath)(params.location.modulePath) as T);
+      (getJiti(params.location.modulePath)(toSafeImportPath(params.location.modulePath)) as T);
     Object.assign(sentinel, loaded);
     loadedFacadePluginIds.add(
       typeof params.trackedPluginId === "function"

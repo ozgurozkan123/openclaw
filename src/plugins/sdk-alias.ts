@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { resolveOpenClawPackageRootSync } from "../infra/openclaw-root.js";
 
 type PluginSdkAliasCandidateKind = "dist" | "src";
@@ -431,7 +431,10 @@ export function buildPluginLoaderJitiOptions(aliasMap: Record<string, string>) {
     interopDefault: true,
     // Prefer Node's native sync ESM loader for built dist/*.js modules so
     // bundled plugins and plugin-sdk subpaths stay on the canonical module graph.
-    tryNative: true,
+    // Disabled on Windows: jiti's tryNative path calls nativeImport() with raw
+    // drive-letter paths (C:\...) which Node's ESM loader rejects with
+    // ERR_UNSUPPORTED_ESM_URL_SCHEME.
+    tryNative: process.platform !== "win32",
     extensions: [".ts", ".tsx", ".mts", ".cts", ".mtsx", ".ctsx", ".js", ".mjs", ".cjs", ".json"],
     ...(Object.keys(aliasMap).length > 0
       ? {
@@ -439,6 +442,28 @@ export function buildPluginLoaderJitiOptions(aliasMap: Record<string, string>) {
         }
       : {}),
   };
+}
+
+/**
+ * On Windows, the Node.js ESM loader requires absolute paths to be expressed
+ * as file:// URLs (e.g. file:///C:/Users/...). Raw drive-letter paths like
+ * C:\... are rejected with ERR_UNSUPPORTED_ESM_URL_SCHEME because the loader
+ * mistakes the drive letter for an unknown URL scheme.
+ *
+ * This helper converts Windows absolute import specifiers to file:// URLs and
+ * leaves everything else unchanged.
+ */
+export function toSafeImportPath(specifier: string): string {
+  if (process.platform !== "win32") {
+    return specifier;
+  }
+  if (specifier.startsWith("file://")) {
+    return specifier;
+  }
+  if (path.win32.isAbsolute(specifier)) {
+    return pathToFileURL(specifier).href;
+  }
+  return specifier;
 }
 
 export function shouldPreferNativeJiti(modulePath: string): boolean {
